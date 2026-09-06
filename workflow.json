@@ -1,0 +1,80 @@
+{
+"name": "Weekly Dev Summary",
+"nodes": [
+{
+"type": "n8n-nodes-base.trigger",
+"trigger_name": "Weekly Cron",
+"config": {
+"cron": "0 17 * * 5" // Friday at 5pm
+}
+},
+{
+"type": "n8n-nodes-base.n8n-db",
+"name": "GitHub API",
+"config": {
+"query": {
+"repos": [
+{
+"repo_name": "${github_repo}",
+"owner": "${github_username}"
+}
+],
+"endpoints": [
+{
+"endpoint": "GET /repos/{repo_name}/issues?state=closed&per_page=100",
+"name": "closed_issues"
+},
+{
+"endpoint": "GET /repos/{repo_name}/pulls?state=closed&per_page=100",
+"name": "merged_PRs"
+},
+{
+"endpoint": "GET /repos/{repo_name}/commits?since={last_week}&per_page=100",
+"name": "commits"
+}
+]
+}
+}
+},
+{
+"type": "n8n-nodes-base.n8n-db",
+"name": "Claude API",
+"config": {
+"query": {
+"api_key": "${claude_api_key}",
+"text": ""
+}
+}
+},
+{
+"type": "n8n-nodes-base.operations.string-manipulation",
+"name": "Generate Summary",
+"config": {
+"operation": "CONCATENATE",
+"strings": [
+"Weekly Dev Summary: \n\n",
+"{{#closed_issues}} Closed issue {{title}}\n{{/#closed_issues}}",
+"{{#merged_PRs}} Merged PR {{title}}\n{{/#merged_PRs}}",
+"{{#commits}} Commit {{hash}} by {{author}}\n{{/#commits}}"
+]
+}
+},
+{
+"type": "n8n-nodes-base.operations.file-writer",
+"name": "Write Summary to File",
+"config": {
+"path": "/tmp/summary.txt",
+"content": "{{#Generate_Summary}}{{{output}}}{{/#Generate_Summary}}"
+}
+},
+{
+"type": "n8n-nodes-base.operations.email",
+"name": "Send Summary via Email",
+"config": {
+"to": "${email_to}",
+"subject": "Weekly Dev Summary",
+"body": "{{#Write_Summary}}{{{content}}}{{/#Write_Summary}}"
+}
+}
+]
+}
